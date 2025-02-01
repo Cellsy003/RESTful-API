@@ -39,16 +39,36 @@ const register = async (req, res) => {
 
 
 // Login User
-const login = async (req, res) => {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
-    if (!user) return res.status(400).json({ message: 'Invalid username or password' });
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) return res.status(400).json({ message: 'Invalid username or password' });
 
-    const token = jwt.sign({ id: user._id, username: user.username }, process.env.SECRET_KEY, { expiresIn: '1h' });
-    res.json({ token });
+const login = async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        // Validate input
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+
+        // Check if user exists
+        const user = await User.findOne({ username });
+        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+
+        // Validate password
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) return res.status(400).json({ message: 'Invalid credentials' });
+
+        // Generate JWT token
+        const token = jwt.sign({ id: user._id, username: user.username }, process.env.SECRET_KEY, { expiresIn: process.env.JWT_EXPIRATION || '1h' });
+
+        // Respond with token
+        res.json({ token });
+    } catch (error) {
+        console.error('Error logging in user:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 };
+
+
 
 module.exports = { register, login };
 
